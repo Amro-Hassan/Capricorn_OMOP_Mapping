@@ -1,0 +1,46 @@
+SELECT OM.[PCOR Table],
+	OM.PCOR_Column_ID,	
+	OM.[PCOR Column],	
+	OM.[PCOR Data Type],
+	PCOR_Value_Sub,
+	[PCOR Value Definition_Sub],	
+	PCOR_Value_ID,
+	ov.[Concept Code],
+	ov.Domain_ID	,
+	ov.Vocabulary_ID,
+	ov.Concept_Class_id,
+	ov.Standard_concept
+into #Temp_Mapping
+ FROM [OMOP].[Capricorn_OMOP_Mapping] OM
+INNER JOIN  [OMOP].[Capricorn_OMOP_ValueSet] ov
+ON OM.NAME = OV.PCOR_Table_ID AND OM.PCOR_Column_ID = ov.PCOR_Column_ID
+WHERE 
+[CDM Version ID]= 501 AND [PCOR Table] = 'Encounter'
+ORDER BY [PCOR Column]
+
+INSERT INTO [OMOP].[visit_occurrence]
+select PATID AS person_id
+, ENCOUNTERID AS visit_occurrence_id
+,  ADMIT_Date AS visit_start_date
+, CAST(CONCAT(ADMIT_Date,' ',Admit_TIME) AS DATETIME2(7)) visit_start_datetime
+,DISCHARGE_DATE AS visit_end_date
+, CAST(CONCAT(DISCHARGE_DATE,' ',DISCHARGE_TIME) AS DATETIME2(7)) visit_end_datetime
+,[Concept Code] AS visit_type_concept_id
+,PROVIDERID AS provider_id
+,FACILITY_LOCATION AS care_site_id
+,PCOR_Value_Sub AS visit_source_value
+, PCOR_Value_ID AS visit_source_concept_id
+, ''   AS admitting_source_concept_id
+,'' AS admitting_source_value
+,''discharge_to_concept_id
+,''	discharge_to_source_value	
+,''	preceding_visit_occurrence_id
+FROM [PCORI4_PROD].[ENCOUNTER] E
+LEFT JOIN #Temp_Mapping AdmS
+ON E.ENC_TYPE = AdmS.PCOR_Value_Sub
+
+
+drop table #temp_mapping
+
+
+
