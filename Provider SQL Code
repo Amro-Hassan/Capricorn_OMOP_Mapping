@@ -1,0 +1,54 @@
+
+SELECT OM.[PCOR Table],
+    OM.PCOR_Column_ID,    
+    OM.[PCOR Column],    
+    OM.[PCOR Data Type],
+    PCOR_Value_Sub,
+        [PCOR Value Definition_Sub],    
+        PCOR_Value_ID,
+        ov.[Concept Code],
+            ov.Domain_ID    ,
+            ov.Vocabulary_ID,
+                ov.Concept_Class_id,
+                    ov.Standard_concept
+into #temp_mapping
+FROM [OMOP].[Capricorn_OMOP_Mapping] OM
+INNER JOIN  [OMOP].[Capricorn_OMOP_ValueSet] ov
+ON OM.NAME = OV.PCOR_Table_ID AND OM.PCOR_Column_ID = ov.PCOR_Column_ID
+WHERE [CDM Version ID]= 501 AND [PCOR Table] = 'Provider'
+
+--Select * from #temp_mapping
+
+
+select p.PROVIDERID as provider_id,
+		'NULL' as provider_name,
+		'NULL' as DEA,
+		p.PROVIDER_NPI as NPI	,
+		z.[Concept code] as specialty_concept_id ,
+		'NULL' as Care_site_id,
+		0 as year_of_birth,
+		y.[Concept code] as gender_concept_id,	
+		Concat(p.PROVIDER_NPI_FLAG,'|',p.PROVIDER_NPI) as provider_source_value,
+		p.RAW_PROVIDER_SPECIALTY_PRIMARY  as specialty_source_value,
+		z.PCOR_Value_ID as specialty_source_concept_id,	
+		p.Provider_Sex as gender_source_value,	
+		y.PCOR_Value_ID as gender_source_concept_id
+		
+
+from  [PCORI4_PROD].[PROVIDER] p left join
+ ( Select * from #temp_mapping
+ where [PCOR Column]='PROVIDER_SPECIALTY_PRIMARY'
+) z on z.[concept code] = p.PROVIDER_SPECIALTY_PRIMARY
+left join 
+ ( Select * from #temp_mapping
+ where [PCOR Column]='PROVIDER_SEX'
+) y on y.[concept code] = p.PROVIDER_SPECIALTY_PRIMARY
+left join 
+ ( Select * from #temp_mapping
+ where [PCOR Column]='PROVIDER_NPI_FLAG'
+)x on x.[concept code] = p.PROVIDER_SPECIALTY_PRIMARY
+
+drop table #temp_mapping
+
+
+
